@@ -41,7 +41,7 @@ class FasterRCNN(nn.Module):
             self.extractor, classifier = Fpn50()
 
             self.rpn = RegionProposalNetwork(
-                1024, 512,
+                256, 512,
                 ratios=ratios,
                 anchor_scales=anchor_scales,
                 feat_stride=self.feat_stride,

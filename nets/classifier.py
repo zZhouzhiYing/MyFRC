@@ -54,8 +54,8 @@ class Resnet50RoIHead(nn.Module):
         self.classifier = classifier
         # self.cls_loc = nn.Linear(2048, n_class * 4)
         # self.score = nn.Linear(2048, n_class)
-        self.cls_loc = nn.Linear(256, n_class * 4)
-        self.score = nn.Linear(256, n_class)
+        self.cls_loc = nn.Linear(1024, n_class * 4)
+        self.score = nn.Linear(1024, n_class)
         normal_init(self.cls_loc, 0, 0.001)
         normal_init(self.score, 0, 0.01)
         # 分多少个类，包括背景
@@ -81,7 +81,9 @@ class Resnet50RoIHead(nn.Module):
         print('feature',x.shape)#1, 1024, 38, 38
         print('after roi',pool.shape)#[128, 1024, 14, 14]
         fc7 = self.classifier(pool)#300,2048,7,7->300,2048,1,1
+        print('after fc',fc7.shape)
         fc7 = fc7.view(fc7.size(0), -1)#300,2048
+        print('after fc2',fc7.shape)
         roi_cls_locs = self.cls_loc(fc7)
         roi_scores = self.score(fc7)
         return roi_cls_locs, roi_scores

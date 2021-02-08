@@ -176,10 +176,10 @@ class F1(FPN,nn.Module):
         print('p4',p4.shape)
         p3 = self.smooth2(p3)
         print('p3',p3.shape)
-        # p2 = self.smooth3(p2)
-        # print('p2',p2.shape)
+        p2 = self.smooth3(p2)
+        print('p2',p2.shape)
 
-        return p4
+        return p2
 
 class F2(FPN,nn.Module):
     def __init__(self,block,layers):
@@ -192,17 +192,17 @@ class F2(FPN,nn.Module):
         # self.layer1=model.layer1
         # self.layer2=model.layer2
         # self.layer3=model.layer3
-        self.layer4=model.layer4
-        self.avgpool=model.avgpool
+        # self.layer4=model.layer4
+        # self.avgpool=model.avgpool
         self.fc=model.fc
+        self.avp=nn.AvgPool2d(14)
+        self.conva=nn.Conv2d(256, 1024, kernel_size=3, stride=1, padding=1)
     def forward(self, x):
-        x = self.smooth3(x)
-        # x = self.layer4(x)
-        # print('l4',x.shape)
-        # x = self.avgpool(x)
-        # print('heihei')
-        # x = x.view(x.size(0), -1)
-        # x = self.fc(x)
+        x = self.conva(x)
+        print('l4',x.shape)#16,1024,19,19
+        x = self.avp(x)
+        print('heihei',x.shape)
+       
         return x
 def FPN50():
     return FPN(Bottleneck, [3, 4, 6, 3])
