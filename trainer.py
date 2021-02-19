@@ -31,8 +31,7 @@ class FasterRCNNTrainer(nn.Module):
         self.loc_normalize_std = faster_rcnn.loc_normalize_std
 
         self.optimizer = optimizer
-
-    def forward(self, imgs, bboxes, labels, scale):
+    def forward(self,y,imgs, bboxes, labels, scale):
         n = imgs.shape[0]
         if n != 1:
             raise ValueError('Currently only batch size 1 is supported.')
@@ -45,8 +44,8 @@ class FasterRCNNTrainer(nn.Module):
         label = labels[0]
         
         # 获取公用特征层
-        features = self.faster_rcnn.extractor(imgs)
-
+        features = self.faster_rcnn.extractor((imgs,y))
+       
         # 获取faster_rcnn的建议框参数
         rpn_locs, rpn_scores, rois, roi_indices, anchor = self.faster_rcnn.rpn(features, img_size, scale)
 
@@ -119,14 +118,14 @@ class FasterRCNNTrainer(nn.Module):
 
         losses = [rpn_loc_loss, rpn_cls_loss, roi_loc_loss, roi_cls_loss]
         losses = losses + [sum(losses)]
-        return LossTuple(*losses)
+        return features,LossTuple(*losses)
 
-    def train_step(self, imgs, bboxes, labels, scale):
+    def train_step(self,y,imgs, bboxes, labels, scale):
         self.optimizer.zero_grad()
-        losses = self.forward(imgs, bboxes, labels, scale)
+        fy,losses = self.forward(y,imgs, bboxes, labels, scale)
         losses.total_loss.backward()
         self.optimizer.step()
-        return losses
+        return fy,losses
 
 def _smooth_l1_loss(x, t, in_weight, sigma):
     sigma2 = sigma ** 2

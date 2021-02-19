@@ -78,12 +78,12 @@ class Resnet50RoIHead(nn.Module):
         indices_and_rois =  xy_indices_and_rois.contiguous()
         # 利用建议框对公用特征层进行截取
         pool = self.roi(x, indices_and_rois)
-        print('feature',x.shape)#1, 1024, 38, 38
-        print('after roi',pool.shape)#[128, 1024, 14, 14]
+        # print('feature',x.shape)#1, 1024, 38, 38
+        # print('after roi',pool.shape)#[128, 1024, 14, 14]
         fc7 = self.classifier(pool)#300,2048,7,7->300,2048,1,1
-        print('after fc',fc7.shape)
+        # print('after fc',fc7.shape)
         fc7 = fc7.view(fc7.size(0), -1)#300,2048
-        print('after fc2',fc7.shape)
+        # print('after fc2',fc7.shape)
         roi_cls_locs = self.cls_loc(fc7)
         roi_scores = self.score(fc7)
         return roi_cls_locs, roi_scores

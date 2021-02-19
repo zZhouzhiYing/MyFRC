@@ -96,9 +96,9 @@ class RegionProposalNetwork(nn.Module):
     def forward(self, x, img_size, scale=1.):
         n, _, hh, ww = x.shape
         # 对共享特征层进行一个3x3的卷积
-        print('rpn',x.shape)
+        # print('rpn',x.shape)
         h = F.relu(self.conv1(x))
-        print('rpn2',h.shape)
+        # print('rpn2',h.shape)
         # 回归预测
         rpn_locs = self.loc(h)
         rpn_locs = rpn_locs.permute(0, 2, 3, 1).contiguous().view(n, -1, 4)

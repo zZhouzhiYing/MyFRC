@@ -23,22 +23,31 @@ def fit_ont_epoch(net,epoch,epoch_size,epoch_size_val,gen,genval,Epoch,cuda):
     roi_loc_loss = 0
     roi_cls_loss = 0
     val_toal_loss = 0
+    i=0
+    y=torch.zeros(16,256,150,150).cuda()
     with tqdm(total=epoch_size,desc=f'Epoch {epoch + 1}/{Epoch}',postfix=dict,mininterval=0.3) as pbar:
         for iteration, batch in enumerate(gen):
             if iteration >= epoch_size:
                 break
             imgs,boxes,labels = batch[0], batch[1], batch[2]
+            
 
             with torch.no_grad():
                 if cuda:
                     imgs = Variable(torch.from_numpy(imgs).type(torch.FloatTensor)).cuda()
                     boxes = [Variable(torch.from_numpy(box).type(torch.FloatTensor)).cuda() for box in boxes]
                     labels = [Variable(torch.from_numpy(label).type(torch.FloatTensor)).cuda() for label in labels]
-                else:
-                    imgs = Variable(torch.from_numpy(imgs).type(torch.FloatTensor))
-                    boxes = [Variable(torch.from_numpy(box).type(torch.FloatTensor)) for box in boxes]
-                    labels = [Variable(torch.from_numpy(label).type(torch.FloatTensor)) for label in labels]
-            losses = train_util.train_step(imgs, boxes, labels, 1)
+                # else:
+                #     imgs = Variable(torch.from_numpy(imgs).type(torch.FloatTensor))
+                #     boxes = [Variable(torch.from_numpy(box).type(torch.FloatTensor)) for box in boxes]
+                #     labels = [Variable(torch.from_numpy(label).type(torch.FloatTensor)) for label in labels]
+            if iteration==0:
+                fy,losses = train_util.train_step(y,imgs, boxes, labels, 1)
+            if iteration>0:
+                fy,losses = train_util.train_step(y,imgs, boxes, labels, 1)
+            
+            # print('fffffy',fy.shape)
+            y=fy
             rpn_loc, rpn_cls, roi_loc, roi_cls, total = losses
             total_loss += total
             rpn_loc_loss += rpn_loc
@@ -53,6 +62,9 @@ def fit_ont_epoch(net,epoch,epoch_size,epoch_size_val,gen,genval,Epoch,cuda):
                                 'roi_cls'  : roi_cls_loss.item() / (iteration + 1), 
                                 'lr'       : get_lr(optimizer)})
             pbar.update(1)
+            # print('iiiiiiii',i+iteration)
+            
+
 
     print('Start Validation')
     with tqdm(total=epoch_size_val, desc=f'Epoch {epoch + 1}/{Epoch}',postfix=dict,mininterval=0.3) as pbar:
@@ -97,10 +109,10 @@ if __name__ == "__main__":
     Use_Data_Loader = True
     Cuda = True
 
-    # model_path = r'model_data/voc_weights_resnet.pth'
+    model_path = r'model_data/voc_weights_resnet.pth'
     print('Loading weights into state dict...')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model_dict = model.state_dict()
+    # model_dict = model.state_dict()
     # pretrained_dict = torch.load(model_path, map_location=device)
     # pretrained_dict = {k: v for k, v in pretrained_dict.items() if np.shape(model_dict[k]) ==  np.shape(v)}
     # model_dict.update(pretrained_dict)
@@ -156,8 +168,10 @@ if __name__ == "__main__":
         #   由于batch==1所以冻结bn层
         # ------------------------------------#
         model.freeze_bn()
+        # y=torch.zeros(16,256,150,150,device=device)
 
         train_util = FasterRCNNTrainer(model,optimizer)
+       
 
         for epoch in range(Init_Epoch,Freeze_Epoch):
             # for name, param in model.named_parameters():

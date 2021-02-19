@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from nets.vgg16 import decom_vgg16
 from nets.resnet50 import resnet50
-from nets.oFPN import Fpn50
+from nets.MyFpn import Fpn50
 from nets.rpn import RegionProposalNetwork
 from nets.classifier import VGG16RoIHead,Resnet50RoIHead
 import time 
@@ -53,9 +53,10 @@ class FasterRCNN(nn.Module):
                 spatial_scale=(1. / self.feat_stride),
                 classifier=classifier
             )
-    def forward(self, x, scale=1.):
+    def forward(self, x,y,scale=1.):
         img_size = x.shape[2:]
-        h = self.extractor(x)
+        h = self.extractor((x,y))
+        
 
         rpn_locs, rpn_scores, rois, roi_indices, anchor = \
             self.rpn.forward(h, img_size, scale)

@@ -103,16 +103,16 @@ class FPN(nn.Module):
         _,_,H,W = y.size()
         return F.interpolate(x,size=(H,W),mode='bilinear')
 
-    def forward(self, x, y):
+    def forward(self, x):
         # Bottom-up
         #y=[64,256,56,56]
         c1 = F.relu(self.bn1(self.conv1(x)))
         print('c1',c1.shape) #[64, 64, 112, 112]
         c1 = F.max_pool2d(c1, kernel_size=3, stride=2, padding=1)
         print('c1',c1.shape) #[64, 64, 56, 56]
-        yy=self.convqq(y)
-        cc=c1+yy
-        c2 = self.layer1(cc)
+        # yy=self.convqq(y)
+        # cc=c1+yy
+        c2 = self.layer1(c1)
         print('c2',c2.shape) #[64, 256, 56, 56]
         c3 = self.layer2(c2)
         print('c3',c3.shape) #[64, 512, 28, 28]
@@ -142,23 +142,117 @@ class FPN(nn.Module):
         FP3=self._upsample(FP3,p2)
         FP2=self.k2*FP3+p2
         FP2=self.smooth3(FP2)
-        print('fp2',fp2.size())
+        print('fp2',FP2.size())
         #become classfication
-        x = self.avgpool(fp2)
-        print('av',x.shape)
-        x = x.view(x.size(0), -1)
-        print('x',x.size())
-        x = self.fc(x)
-        print('x',x.size())
-        return x,FP2
+        # x = self.avgpool(fp2)
+        # print('av',x.shape)
+        # x = x.view(x.size(0), -1)
+        # print('x',x.size())
+        # x = self.fc(x)
+        # print('x',x.size())
+        return FP2
         
 def FPN50():
     return FPN(Bottleneck, [3,4,6,3])
 
+class F1(FPN,nn.Module):
+    def __init__(self,block,layers):
+        super(F1, self).__init__(block,layers)
+        model=FPN(Bottleneck, [3, 4, 6, 3])
+        self.conv1=model.conv1
+        self.bn1=model.bn1
+        # self.relu=model.relu
+        self.layer1=model.layer1
+        self.layer2=model.layer2
+        self.layer3=model.layer3
+        self.layer4=model.layer4
+        self.toplayer=model.toplayer
+        self.smooth1=model.smooth1
+        self.smooth2=model.smooth2
+        self.smooth3=model.smooth3
+        self.latlayer1=model.latlayer1
+        self.latlayer2=model.latlayer2
+        self.latlayer3=model.latlayer3
+       
 
 
-x=torch.randn(16,3,224,224)
-y = torch.zeros((16,256,56,56))    
-net=FPN50()
-# output=net(x,y)
+        
+    def forward(self,inp):
+        x,y=inp
+        c1 = F.relu(self.bn1(self.conv1(x)))
+        # print('c1',c1.shape) #[64, 64, 112, 112]
+        c1 = F.max_pool2d(c1, kernel_size=3, stride=2, padding=1)
+        # print('c1',c1.shape) #[64, 64, 56, 56]
+        # yy=self.convqq(y)
+        # cc=c1+yy
+        cc=c1+self.convqq(y)
+        c2 = self.layer1(cc)
+        # print('c2',c2.shape) #[64, 256, 56, 56]
+        c3 = self.layer2(c2)
+        # print('c3',c3.shape) #[64, 512, 28, 28]
+        c4 = self.layer3(c3)
+        # print('c4',c4.shape) #[64, 1024, 14, 14]
+        c5 = self.layer4(c4)
+        # print('c5',c5.shape) #[64, 2048, 7, 7]
+        # Top-down
+        p5 = self.toplayer(c5)
+        # print('p5',p5.shape) #[64, 256, 7, 7]
+        p4 = self._upsample_add(p5, self.latlayer1(c4))
+        # print('p4',p4.shape) #[64, 256, 14, 14]
+        p3 = self._upsample_add(p4, self.latlayer2(c3))
+        # print('p3',p3.shape) #[64, 256, 28, 28]
+        p2 = self._upsample_add(p3, self.latlayer3(c2))
+        # print('p2',p2.shape) #[64, 256, 56, 56]
+        # Smooth
+        p4 = self.smooth1(p4)
+        p3 = self.smooth2(p3)
+        p2 = self.smooth3(p2)
+        # print('p2',p2.shape)
+        # print('3',p3.shape)
+        # print('4',p4.shape)
+        p4=self._upsample(p4,p3)
+        FP3=self.k1*p4+p3
+        FP3=self.smooth3(FP3)
+        FP3=self._upsample(FP3,p2)
+        FP2=self.k2*FP3+p2
+        FP2=self.smooth3(FP2)
+        # print('fp2',FP2.size())
 
+        return FP2
+
+class F2(FPN,nn.Module):
+    def __init__(self,block,layers):
+        super(F2, self).__init__(block,layers)
+        model=FPN(Bottleneck, [3, 4, 6, 3])
+        self.fc=model.fc
+        self.avp=nn.AvgPool2d(14)
+        self.conva=nn.Conv2d(256, 1024, kernel_size=3, stride=1, padding=1)
+    def forward(self, x):
+        # print('xxxxxxx',x.shape)
+        x = self.conva(x)
+        # print('l4',x.shape)#16,1024,19,19
+        x = self.avp(x)
+        # print('heihei',x.shape)
+       
+        return x
+
+def Fpn50():
+    # model = FPN(Bottleneck, [3, 4, 6, 3])
+    net1=F1(Bottleneck, [3, 4, 6, 3])
+    net2=F2(Bottleneck, [3, 4, 6, 3])
+    # 获取特征提取部分
+    
+    features = list([net1])
+    # 获取分类部分
+    classifier = list([net2])
+    features = nn.Sequential(*features)
+    classifier = nn.Sequential(*classifier)
+    return features,classifier
+
+# qq=torch.zeros(1024,256,3,3)
+# x=torch.randn(16,3,600,600)
+# y=torch.randn(16,256,150,150)    
+# e,c=Fpn50()
+# e((x,y))
+
+# print(output.shape)
